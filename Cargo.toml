@@ -1,0 +1,15 @@
+[package]
+name = "screenshot_watcher"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clipboard = "0.5.0"
+dotenv = "0.15.0"
+futures = "0.3.29"
+mime_guess = "2.0.4"
+notify = "6.1.1"
+reqwest = { version = "0.11.22", features = ["multipart", "stream", "json"] }
+serde_json = "1.0.108"
+tokio = { version = "1.35.0", features = ["full"] }
+tokio-util = { version = "0.7.10", features = ["codec"] }
