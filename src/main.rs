@@ -1,15 +1,15 @@
+use clipboard::{ClipboardContext, ClipboardProvider};
+use dotenv::dotenv;
 use futures::{
     channel::mpsc::{channel, Receiver},
     SinkExt, StreamExt,
 };
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use reqwest::{multipart, Body, Client};
+use std::env::var;
 use std::path::Path;
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
-use clipboard::{ClipboardContext, ClipboardProvider};
-use dotenv::dotenv;
-use std::env::var;
 
 #[tokio::main]
 async fn main() {
@@ -47,12 +47,15 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                 if event.kind.is_create() {
                     let original_path = Path::new(&event.paths[0]).to_path_buf();
                     println!("Detected new file: {:?}", original_path);
-                    let file_name = original_path.file_name().unwrap();
-                    let file_name_str = file_name.to_str().unwrap();
-                    let new_file_name = file_name_str.trim_start_matches(".");
-                    let parent = original_path.parent().unwrap();
-                    let new_path = parent.join(new_file_name);
-                    make_post_request(&new_path).await.unwrap();
+                    let mut real_path = original_path.clone();
+                    if var("ONEDRIVE").expect("Expected ONEDRIVE in the environment") == "true" {
+                        let file_name = original_path.file_name().unwrap();
+                        let file_name_str = file_name.to_str().unwrap();
+                        let new_file_name = file_name_str.trim_start_matches(".");
+                        let parent = original_path.parent().unwrap();
+                        real_path = parent.join(new_file_name);
+                    }
+                    make_post_request(&real_path).await.unwrap();
                 }
             }
             Err(e) => println!("watch error: {:?}", e),
@@ -79,7 +82,10 @@ async fn make_post_request(path: &Path) -> reqwest::Result<()> {
         .unwrap();
     let form = multipart::Form::new().part("file", some_file);
 
-    let link = format!("https://{}/api/upload", var("LINK").expect("Expected LINK in the environment"));
+    let link = format!(
+        "https://{}/api/upload",
+        var("LINK").expect("Expected LINK in the environment")
+    );
 
     let response = client
         .post(link)
@@ -87,8 +93,14 @@ async fn make_post_request(path: &Path) -> reqwest::Result<()> {
             "Authorization",
             var("TOKEN").expect("Expected TOKEN in the environment"),
         )
-        .header("Format", "NAME")
-        .header("Embed", "false")
+        .header(
+            "Format",
+            var("FORMAT").expect("Expected FORMAT in the environment"),
+        )
+        .header(
+            "Embed",
+            var("EMBED").expect("Expected EMBED in the environment"),
+        )
         .multipart(form)
         .send()
         .await?;
