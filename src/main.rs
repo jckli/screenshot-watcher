@@ -87,24 +87,35 @@ async fn make_post_request(path: &Path) -> reqwest::Result<()> {
         var("LINK").expect("Expected LINK in the environment")
     );
 
-    let response = client
-        .post(link)
-        .header(
-            "Authorization",
-            var("TOKEN").expect("Expected TOKEN in the environment"),
-        )
-        .header(
-            "Format",
-            var("FORMAT").expect("Expected FORMAT in the environment"),
-        )
-        .header(
-            "Embed",
-            var("EMBED").expect("Expected EMBED in the environment"),
-        )
-        .multipart(form)
-        .send()
-        .await?;
-    let response_body: serde_json::Value = response.json().await?;
+    let response;
+    if var("EMBED").expect("Expected EMBED in the environment") == "true" {
+        response = client
+            .post(link)
+            .header(
+                "Authorization",
+                var("TOKEN").expect("Expected TOKEN in the environment"),
+            )
+            .header(
+                "Format",
+                var("FORMAT").expect("Expected FORMAT in the environment"),
+            )
+            .header("Embed", "true")
+            .multipart(form);
+    } else {
+        response = client
+            .post(link)
+            .header(
+                "Authorization",
+                var("TOKEN").expect("Expected TOKEN in the environment"),
+            )
+            .header(
+                "Format",
+                var("FORMAT").expect("Expected FORMAT in the environment"),
+            )
+            .multipart(form);
+    }
+    let resp = response.send().await?;
+    let response_body: serde_json::Value = resp.json().await?;
     let url = response_body["files"][0].as_str().unwrap();
     let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
     ctx.set_contents(url.to_string()).unwrap();
