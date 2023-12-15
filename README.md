@@ -1,0 +1,3 @@
+# ScreenshotWatcher
+
+todo: make readme
