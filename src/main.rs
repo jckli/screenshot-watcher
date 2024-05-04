@@ -115,6 +115,10 @@ async fn make_post_request(path: &Path) -> reqwest::Result<()> {
             .multipart(form);
     }
     let resp = response.send().await?;
+    if !resp.status().is_success() {
+        println!("Error: {}", resp.status());
+        return Ok(());
+    }
     let response_body: serde_json::Value = resp.json().await?;
     let url = response_body["files"][0].as_str().unwrap();
     let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
